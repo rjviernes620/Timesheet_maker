@@ -31,7 +31,7 @@ class request_sheet:
         for table in self.sheet.tables:
             for row in table.rows:
                 if row.cells[0].text == 'Shift Date(s) and Times':
-                    return "{:.2f}".format(float(row.cells[2].text.split('-')[0].replace(':', '.')))
+                    return float(row.cells[2].text.split('-')[0].replace(':', '.'))
 
         return None
     
@@ -46,7 +46,7 @@ class request_sheet:
         
         else:
             # Convert start time to total minutes
-            start_hours, start_minutes = map(int, start.split('.'))
+            start_hours, start_minutes = map(int, str(start).split('.'))
             start_total_minutes = start_hours * 60 + start_minutes
 
             # Calculate shift duration in minutes
@@ -99,7 +99,7 @@ class request_sheet:
     
     def collate_to_dict(self):
         self.details["shift_date"] = int(self.shift_date())
-        self.details["start_time"] = self.start_time()
+        self.details["start_time"] = "{:.2f}".format(self.start_time())
         self.details["start_break"] = self.break_time(self.start_time(), self.end_time())[0]
         self.details["end_break"] = self.break_time(self.start_time(), self.end_time())[1]
         self.details["end_time"] = self.end_time()
@@ -108,7 +108,3 @@ class request_sheet:
         self.details["shift_name"] = self.shift_name()
         print(self.details)
         return self.details
-    
-doc = Document('demo\\src\\main\\resources\\test1.docx')
-request = request_sheet(doc)
-request.collate_to_dict()
