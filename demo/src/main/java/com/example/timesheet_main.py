@@ -20,7 +20,6 @@ class timesheet_main:
         self.timesheet.range('F4').value = details["employee_number"]
         self.profile = details
 
-
     def set_date(self, year, month):
         self.timesheet.range('K7').value = year
         self.set_year = year
@@ -58,3 +57,16 @@ class timesheet_main:
 
         self.file.save(f'demo\\src\\main\\resources\\completed_timesheets\\{self.profile["last_name"]}_{self.profile["first_name"]}_Timesheet_{self.set_month}_{self.set_year}.xls')
         self.file.close()
+
+
+main = timesheet_main()
+user_input = input("")
+while True:
+
+    
+
+    while user_input != "exit":
+
+        if "SETUP_PROFILE" in user_input:
+            details = user_input.split(" ")
+            main.setup_profile({"last_name": details[1], "first_name": details[2], "employee_number": details[3]})

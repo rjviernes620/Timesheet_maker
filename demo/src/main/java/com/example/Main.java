@@ -16,7 +16,70 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 
+import java.io.BufferedWriter;
+import java.io.OutputStreamWriter;
+
+
+class Java2Python {    
+
+    public BufferedWriter writer;
+    public Process process;
+    
+    public Java2Python() {
+        try {
+            ProcessBuilder builder = new ProcessBuilder("python", "demo\\src\\main\\java\\com\\example\\timesheet_main.py");
+            Process process = builder.start();
+            writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public void sendMessage(String message){
+        try {
+            // Start the Python script
+
+
+            // Initialize the BufferedWriter using the instance variable
+            
+            // Use the BufferedWriter at different parts of the code
+            writer.write(message);  // First use
+            writer.flush();
+            
+            // Example of using the writer again
+            // writer.write("Another message\n");
+            // writer.flush();
+
+            // Read and print the script's output
+            new Thread(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        System.out.println(line);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            // Ensure the BufferedWriter is closed properly
+            if (writer != null) {
+                try {
+                    writer.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+}
 public class Main extends JFrame {
+
+    //Java2Python inteface
+    private Java2Python j2p = new Java2Python();
 
     //Menu Bar Elements
     private JMenuBar menuBar;
@@ -43,12 +106,14 @@ public class Main extends JFrame {
     private JTextArea first_name = new JTextArea(1, 5);
     private JTextArea last_name = new JTextArea(1, 5);
     private JTextArea Employee_ID = new JTextArea(1, 5);
+    JButton Submit = new JButton("Submit");
     
     //Manual Add -> Fields
     private JTextArea shift_name = new JTextArea(1, 20);
     private JTextArea budget_code = new JTextArea(1, 20);
     String[] shiftLocationList = {"Inside London (Inc. OEP Shifts, Greenwich & Avery Hill)", "Outside London (Inc. Medway)"};
     JComboBox<String> shiftLocation = new JComboBox<>(shiftLocationList);
+    String[] payRate = {"SP2", "SP7"};
     private JTextArea start_time = new JTextArea(1, 10);
     private JTextArea end_time = new JTextArea(1, 10);
     private JTextArea break_time = new JTextArea(1, 10);
@@ -199,6 +264,7 @@ public class Main extends JFrame {
             manualAddFrame.setLayout(new GridBagLayout());
             GridBagConstraints c = new GridBagConstraints();
 
+
             shift_name.setEditable(true);
             shift_name.setLineWrap(false);
             shift_name.setWrapStyleWord(true);
@@ -310,11 +376,24 @@ public class Main extends JFrame {
             c.insets = new Insets(0, 60, 0, 0);
             manualAddFrame.add(split, c);
 
-            c.gridx = 1;
+            JLabel payRateLabel = new JLabel("Pay Rate");
+            c.gridx = 0;
             c.gridy = 7;
             c.fill = GridBagConstraints.PAGE_END;
-            manualAddFrame.add(manual_add_shift, c);
+            manualAddFrame.add(payRateLabel, c);
 
+            JComboBox<String> payRateList = new JComboBox<>(payRate);
+            payRateList.setMaximumRowCount(payRate.length);
+            c.fill = GridBagConstraints.PAGE_END;
+            c.gridx = 1;
+            c.gridy = 7;
+            c.insets = new Insets(0, 20, 0, 0);
+            manualAddFrame.add(payRateList, c);
+
+            c.gridx = 1;
+            c.gridy = 8;
+            c.fill = GridBagConstraints.PAGE_END;
+            manualAddFrame.add(manual_add_shift, c);
     }
 
     public void addComponentstoSetupProfile() {
@@ -358,6 +437,21 @@ public class Main extends JFrame {
         c.gridx = 0;
         c.gridy = 2;
         setupProfileFrame.add(Employee_ID, c);
+
+        c.gridx = 0;
+        c.gridy = 3;
+        c.fill = GridBagConstraints.PAGE_END;
+        setupProfileFrame.add(Submit, c);
+
+        Submit.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                String firstName = first_name.getText();
+                String lastName = last_name.getText();
+                String employeeID = Employee_ID.getText();
+                confirmed_shift_profile.setText("First Name: " + firstName + " Last Name: " + lastName + " Employee ID: " + employeeID);
+                j2p.sendMessage("SETUP_PROFILE " + " " + lastName + " " + firstName + " " + employeeID + "\n");
+            }
+        });
     }
 
     public int getDaysInMonth(String month, int year) {
@@ -400,13 +494,6 @@ public class Main extends JFrame {
                     Files.copy(selectedFile.toPath(), target_area.toPath(), StandardCopyOption.REPLACE_EXISTING);
                     System.out.println("File copied to: " + target_area.getAbsolutePath());
 
-                    String command = "python -c \"import timesheet_main; timesheet_main.request_sheet('" + target_area.getAbsolutePath().replace("\\", "\\\\") + "')\"";
-                    Process p = Runtime.getRuntime().exec(command);
-                    BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));
-                    String line;
-                    while ((line = in.readLine()) != null) {
-                        System.out.println(line);
-                    }
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
@@ -429,5 +516,6 @@ public class Main extends JFrame {
         frame.setLocationRelativeTo(null);
         Image sml = small.getImage();
         frame.setIconImage(sml);
+
     }
 }
