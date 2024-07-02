@@ -106,5 +106,6 @@ class request_sheet:
         self.details["pay_rate"] = self.pay_rate()
         self.details["budget_code"] = self.budget_code()
         self.details["shift_name"] = self.shift_name()
-        print(self.details)
+        
+        print("CONFIRM_SHIFT_UPLOAD" + self.details)
         return self.details

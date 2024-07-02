@@ -28,7 +28,7 @@ class Java2Python {
     public Java2Python() {
         try {
             ProcessBuilder builder = new ProcessBuilder("python", "demo\\src\\main\\java\\com\\example\\timesheet_main.py");
-            Process process = builder.start();
+            this.process = builder.start();
             writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
         } catch (IOException e) {
             e.printStackTrace();
@@ -38,53 +38,48 @@ class Java2Python {
 
     public void sendMessage(String message){
         try {
-            // Start the Python script
 
-
-            // Initialize the BufferedWriter using the instance variable
-            
-            // Use the BufferedWriter at different parts of the code
+            if (process.isAlive()) {
+                System.out.println("Process is alive");
+            } else {
+                System.out.println("Process is not alive");
+            }
             writer.write(message);  // First use
             writer.flush();
             
-            // Example of using the writer again
-            // writer.write("Another message\n");
-            // writer.flush();
-
-            // Read and print the script's output
             new Thread(() -> {
+                String line = "";
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    String line;
                     while ((line = reader.readLine()) != null) {
                         System.out.println(line);
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+                if (line.equals("SAVE_SHEET")) {
+                    JOptionPane.showMessageDialog(null, "Timesheet saved successfully");
+                }
+
+                else if (line.contains("CONFIRM_SHIFT_UPLOAD")) {
+                    
+                }
             }).start();
+
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            // Ensure the BufferedWriter is closed properly
-            if (writer != null) {
-                try {
-                    writer.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
         }
     }
 }
+
 public class Main extends JFrame {
 
     //Java2Python inteface
-    private Java2Python j2p = new Java2Python();
+    Java2Python j2p = new Java2Python();
 
     //Menu Bar Elements
     private JMenuBar menuBar;
     static JMenu menu, boo, help;
-    static JMenuItem timesheet, shifts, edit, profile;
+    static JMenuItem timesheet, shifts, edit, save, profile, about;
 
     //GUI Elements
     private JTextArea confirmed_shift_profile = new JTextArea (20,17);
@@ -92,12 +87,13 @@ public class Main extends JFrame {
     private JLabel uni_logo_label = new JLabel(uni_logo);  
     private JTextArea pre_added_shifts = new JTextArea (10, 40);
     String[] monthList = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
+    String[] yearList = {"2021", "2022", "2023", "2024", "2025", "2026", "2027", "2028", "2029", "2030"};
     public String selectedMonth;
     Border border = BorderFactory.createLineBorder(Color.BLACK, 1);
     
 
     //Buttons
-    JButton generateTimesheet = new JButton ("Generate Timesheet");
+    JButton generateTimesheet = new JButton ("Save Timesheet");
     JButton budgetcode = new JButton ("Edit Budget Code");
     JButton manual_add = new JButton ("Manual Add");
     JButton upload_request_sheet = new JButton ("Upload Request Sheet");
@@ -144,11 +140,17 @@ public class Main extends JFrame {
         edit = new JMenuItem("Edit Budget Code");
         menu.add(edit);
 
+        save = new JMenuItem("Save Timesheet");
+        menu.add(save);
+
         profile = new JMenuItem("New Profile");
         boo.add(profile);
 
         edit = new JMenuItem("New Timesheet");
         boo.add(edit);
+
+        about = new JMenuItem("About");
+        help.add(about);
 
 
         profile.addActionListener(new ActionListener() {
@@ -156,7 +158,20 @@ public class Main extends JFrame {
                 addComponentstoSetupProfile();
             }
         });
+
+        about.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                addComponentsToAbout();
+            }
+        });
+
+        save.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                new Java2Python().sendMessage("SAVE_SHEET\n");
+            }
+        });
     }
+    
 
     public void addComponentsToPane (Container content) {
 
@@ -221,9 +236,42 @@ public class Main extends JFrame {
         c.fill = GridBagConstraints.FIRST_LINE_START;
         c.gridx = 3;
         c.gridy = 0;
-        c.insets = new Insets(300,0,0,0);
+        c.insets = new Insets(0,100,350,0);
         mainbg.add(monthListScroll, c);
         selectedMonth = monthListScroll.getSelectedItem().toString();
+        monthListScroll.setSelectedItem("August");
+
+        monthListScroll.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
+                if (e.getStateChange() == ItemEvent.SELECTED) {
+                    selectedMonth = monthListScroll.getSelectedItem().toString();
+                    j2p.sendMessage("MONTH=" + selectedMonth + "\n");
+                }
+            }
+        
+        });
+
+        //Year List
+        JComboBox<String> yearListScroll = new JComboBox<>(yearList);
+        yearListScroll.setMaximumRowCount(yearList.length);
+        c.fill = GridBagConstraints.FIRST_LINE_START;
+        c.gridx = 3;
+        c.gridy = 0;
+        c.insets = new Insets(0,0,350,100);
+        yearListScroll.setSelectedItem("2022");
+        mainbg.add(yearListScroll, c);
+
+        yearListScroll.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
+                if (e.getStateChange() == ItemEvent.SELECTED) {
+                String selectedYear = yearListScroll.getSelectedItem().toString();
+                j2p.sendMessage("YEAR=" + selectedYear + "\n");
+                }
+            }
+        
+        });
 
         //Upload Request Sheet
         c.fill = GridBagConstraints.HORIZONTAL;
@@ -251,6 +299,30 @@ public class Main extends JFrame {
         c.gridx = 3;
         c.gridy = 3;
         mainbg.add(generateTimesheetScroll, c);
+    }
+
+    public void addComponentsToAbout() {
+        JFrame aboutFrame = new JFrame("About");
+        aboutFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        aboutFrame.setSize(500, 300);
+        aboutFrame.setVisible(true);
+        aboutFrame.setResizable(false);
+        aboutFrame.setLocationRelativeTo(null);
+
+        aboutFrame.setLayout(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+
+        JLabel aboutLabel = new JLabel("This is a timesheet generator for the UoG Student Ambassador Scheme");
+        c.fill = GridBagConstraints.PAGE_START;
+        c.gridx = 0;
+        c.gridy = 0;
+        aboutFrame.add(aboutLabel, c);
+
+        JLabel contact = new JLabel("Developed by Roel-Junior Alejo Viernes (rv0115q@gre.ac.uk)");
+        c.fill = GridBagConstraints.PAGE_START;
+        c.gridx = 0;
+        c.gridy = 1;
+        aboutFrame.add(contact, c);
     }
 
     public void addComponentstoManualAdd() {
@@ -394,6 +466,22 @@ public class Main extends JFrame {
             c.gridy = 8;
             c.fill = GridBagConstraints.PAGE_END;
             manualAddFrame.add(manual_add_shift, c);
+
+            manual_add_shift.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent e) {
+                    String shiftName = shift_name.getText();
+                    String budgetCode = budget_code.getText();
+                    String day = dayList.getSelectedItem().toString();
+                    String selectedShiftLocation = (String) shiftLocation.getSelectedItem(); //Checkup on here
+                    String startTime = start_time.getText();
+                    String endTime = end_time.getText();
+                    String breakTime = break_time.getText();
+                    String payRate = payRateList.getSelectedItem().toString();
+                    pre_added_shifts.append("Shift Name: " + shiftName + " Budget Code: " + budgetCode + " Day: " + day + " Shift Location: " + selectedShiftLocation + " Start Time: " + startTime + " End Time: " + endTime + " Break Time: " + breakTime + " Pay Rate: " + payRate + "\n");
+                    j2p.sendMessage("MANUAL_ADD " + "=" + day + "=" + startTime + "=" + breakTime + "=" + endTime + "=" + payRate + "=" + selectedShiftLocation + "=" + budgetCode + "=" + shiftName + "\n");
+                    manualAddFrame.dispose();
+    }});
+
     }
 
     public void addComponentstoSetupProfile() {
@@ -448,8 +536,9 @@ public class Main extends JFrame {
                 String firstName = first_name.getText();
                 String lastName = last_name.getText();
                 String employeeID = Employee_ID.getText();
-                confirmed_shift_profile.setText("First Name: " + firstName + " Last Name: " + lastName + " Employee ID: " + employeeID);
-                j2p.sendMessage("SETUP_PROFILE " + " " + lastName + " " + firstName + " " + employeeID + "\n");
+                confirmed_shift_profile.setText("Last Name: " + lastName + " First Name: " + firstName + " Employee ID: " + employeeID);
+                j2p.sendMessage("SETUP_PROFILE " + "=" + lastName + "=" + firstName + "=" + employeeID + "\n");
+                setupProfileFrame.dispose();
             }
         });
     }
@@ -475,7 +564,6 @@ public class Main extends JFrame {
                 addComponentstoManualAdd();
             }
         });
-
         upload_request_sheet.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 JFileChooser request_sheet = new JFileChooser();
@@ -493,11 +581,14 @@ public class Main extends JFrame {
                     // Copy the file
                     Files.copy(selectedFile.toPath(), target_area.toPath(), StandardCopyOption.REPLACE_EXISTING);
                     System.out.println("File copied to: " + target_area.getAbsolutePath());
-
+                    j2p.sendMessage("UPLOAD_REQUEST_SHEET " + target_area.getAbsolutePath() + "\n");
+                    String shiftLocationConfirm = JOptionPane.showInputDialog("Please confirm the Location of the shift", shiftLocation);
+                    j2p.sendMessage(shiftLocationConfirm + "\n");
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
                 }
+
             }
         });
         }
